@@ -8,7 +8,7 @@ on:
       - "rulesets.json"
       - "scripts/**"
   schedule:
-    # 04:17 Asia/Shanghai；GitHub Actions 使用 UTC
+    # 04:17 Asia/Shanghai. GitHub Actions schedules use UTC.
     - cron: "17 20 * * *"
 
 permissions:
@@ -20,23 +20,19 @@ concurrency:
 
 jobs:
   build:
-    # 使用 macOS runner，不使用 GNU/Linux
-    runs-on: macos-latest
-
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Install pinned sing-box 1.12.12
         run: python3 scripts/install_sing_box.py --destination .tools
-
       - name: Convert and compile rule-sets
         run: python3 scripts/build_rulesets.py --sing-box .tools/sing-box
-
       - name: Check generated files
         run: |
           git diff --check
           python3 -c 'from pathlib import Path; files = list(Path("rule-set").glob("*.srs")); assert files and all(file.stat().st_size for file in files), "No non-empty SRS output found"'
-
       - name: Commit updated rule-sets
         run: |
           if git diff --quiet -- rule-set; then exit 0; fi
