@@ -1,0 +1,7 @@
+{
+  "rulesets": [
+    {"name": "microsoft-cdn", "url": "https://ruleset.skk.moe/List/non_ip/microsoft_cdn.conf"},
+    {"name": "microsoft", "url": "https://ruleset.skk.moe/List/non_ip/microsoft.conf"}
+  ],
+  "gist_users": ["GravityRyu"]
+}
