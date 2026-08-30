@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Install the pinned Darwin sing-box release used by this project."""
+"""Install the pinned sing-box release used by this GitHub Actions workflow."""
 from __future__ import annotations
 import argparse
-import platform
 import shutil
 import stat
 import tarfile
@@ -11,14 +10,7 @@ import urllib.request
 from pathlib import Path
 
 VERSION = "1.12.12"
-URL = "https://github.com/SagerNet/sing-box/releases/download/v{0}/sing-box-{0}-darwin-{1}.tar.gz"
-
-def architecture() -> str:
-    names = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}
-    try:
-        return names[platform.machine().lower()]
-    except KeyError as error:
-        raise RuntimeError(f"Unsupported macOS architecture: {platform.machine()}") from error
+URL = "https://github.com/SagerNet/sing-box/releases/download/v{0}/sing-box-{0}-linux-amd64.tar.gz"
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -27,7 +19,7 @@ def main() -> None:
     arguments.destination.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as temporary:
         archive = Path(temporary) / "sing-box.tar.gz"
-        request = urllib.request.Request(URL.format(VERSION, architecture()), headers={"User-Agent": "rule-set-builder"})
+        request = urllib.request.Request(URL.format(VERSION), headers={"User-Agent": "rule-set-builder"})
         with urllib.request.urlopen(request, timeout=120) as response, archive.open("wb") as output:
             shutil.copyfileobj(response, output)
         with tarfile.open(archive, "r:gz") as bundle:
@@ -40,6 +32,9 @@ def main() -> None:
             binary = arguments.destination / "sing-box"
             with source, binary.open("wb") as output:
                 shutil.copyfileobj(source, output)
+            with binary.open("rb") as output:
+                if output.read(4) != b"\x7fELF":
+                    raise RuntimeError("Downloaded sing-box is not a Linux ELF executable")
             binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
     print(f"Installed sing-box {VERSION}")
 
