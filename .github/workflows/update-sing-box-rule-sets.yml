@@ -1,0 +1,45 @@
+name: Update sing-box rule-sets
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/update-sing-box-rule-sets.yml"
+      - "rulesets.json"
+      - "scripts/**"
+  schedule:
+    # 04:17 Asia/Shanghai. GitHub Actions schedules use UTC.
+    - cron: "17 20 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-sing-box-rule-sets
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned sing-box 1.12.12
+        run: python3 scripts/install_sing_box.py --destination .tools
+      - name: Verify sing-box executable
+        run: |
+          python3 -c 'from pathlib import Path; assert Path(".tools/sing-box").read_bytes()[:4] == b"\x7fELF", "sing-box is not a Linux ELF executable"'
+          .tools/sing-box version
+      - name: Convert and compile rule-sets
+        run: python3 scripts/build_rulesets.py --sing-box .tools/sing-box
+      - name: Check generated files
+        run: |
+          git diff --check
+          python3 -c 'from pathlib import Path; files = list(Path("rule-set").glob("*.srs")); assert files and all(file.stat().st_size for file in files), "No non-empty SRS output found"'
+      - name: Commit updated rule-sets
+        run: |
+          if git diff --quiet -- rule-set; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rule-set
+          git commit -m "chore: update sing-box rule-sets"
+          git push
